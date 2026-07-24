@@ -8,3 +8,7 @@ customUI.triggerVolumeEffectEditor.field.Camera.Position = Position
 customUI.triggerVolumeEffectEditor.field.Camera.Position.tooltip = Position of the camera. X, Y, Z order.
 customUI.triggerVolumeEffectEditor.field.Camera.Rotation = Rotation (degrees)
 customUI.triggerVolumeEffectEditor.field.Camera.Rotation.tooltip = Rotation of the camera in degrees. Pitch, Yaw, Roll order.
+customUI.triggerVolumeEffectEditor.field.Camera.PositionLerpSpeed = Position Transition Speed
+customUI.triggerVolumeEffectEditor.field.Camera.PositionLerpSpeed.tooltip = Controls how quickly the camera moves toward its target position. Lower values create a slower, smoother transition. Default: 0.15.
+customUI.triggerVolumeEffectEditor.field.Camera.RotationLerpSpeed = Rotation Transition Speed
+customUI.triggerVolumeEffectEditor.field.Camera.RotationLerpSpeed.tooltip = Controls how quickly the camera rotates toward its target orientation. Lower values create a slower, smoother transition. Default: 0.15.
