@@ -44,3 +44,17 @@ customUI.triggerVolumeEffectEditor.field.CameraAlongPathWorldLocked.PositionLerp
 customUI.triggerVolumeEffectEditor.field.CameraAlongPathWorldLocked.PositionLerpSpeed.tooltip = Controls how quickly the camera moves toward its calculated world position. Default: 0.15.
 customUI.triggerVolumeEffectEditor.field.CameraAlongPathWorldLocked.RotationLerpSpeed = Rotation Transition Speed
 customUI.triggerVolumeEffectEditor.field.CameraAlongPathWorldLocked.RotationLerpSpeed.tooltip = Controls how quickly the camera rotates toward its calculated world orientation. Default: 0.15.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.PathStart = Path Start
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.PathStart.tooltip = World position marking the beginning of the camera path. X, Y, Z order.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.PathEnd = Path End
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.PathEnd.tooltip = World position marking the end of the camera path. X, Y, Z order.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.CameraStartOffset = Starting Camera Offset
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.CameraStartOffset.tooltip = World-aligned camera offset from the player at the beginning of the path. X, Y, Z order.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.CameraEndOffset = Ending Camera Offset
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.CameraEndOffset.tooltip = World-aligned camera offset from the player at the end of the path. X, Y, Z order.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.LookAtHeight = Look At Height
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.LookAtHeight.tooltip = Height above the player's base that the camera aims toward. Default: 1.0.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.PositionLerpSpeed = Position Transition Speed
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.PositionLerpSpeed.tooltip = Controls how quickly the camera moves toward its calculated world position. Default: 0.15.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.RotationLerpSpeed = Rotation Transition Speed
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathTrackPlayer.RotationLerpSpeed.tooltip = Controls how quickly the camera turns toward the player. Default: 0.15.

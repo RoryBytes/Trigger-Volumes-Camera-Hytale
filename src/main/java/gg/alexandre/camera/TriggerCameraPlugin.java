@@ -30,6 +30,11 @@ public class TriggerCameraPlugin extends JavaPlugin {
                 CameraAlongPathWorldLockedEffect.class,
                 CameraAlongPathWorldLockedEffect.CODEC
         );
+        TriggerVolumesPlugin.get().registerEffectType(
+                "CameraAlongPathTrackPlayer",
+                CameraAlongPathTrackPlayerEffect.class,
+                CameraAlongPathTrackPlayerEffect.CODEC
+        );
     }
 
 }
