@@ -20,6 +20,8 @@ import javax.annotation.Nonnull;
 
 public class CameraEffect extends TriggerEffect {
 
+    private static final float DEFAULT_LERP_SPEED = 0.15F;
+
     @Nonnull
     public static final BuilderCodec<CameraEffect> CODEC = BuilderCodec.builder(
                     CameraEffect.class, CameraEffect::new, BASE_CODEC
@@ -49,6 +51,20 @@ public class CameraEffect extends TriggerEffect {
                     (e, v) -> e.rotationData = v,
                     (e) -> e.rotationData
             ).add()
+            .append(
+                    new KeyedCodec<>("PositionLerpSpeed", Codec.FLOAT, false),
+                    (e, v) -> e.positionLerpSpeed =
+                            v != null ? v : DEFAULT_LERP_SPEED,
+                    e -> e.positionLerpSpeed
+            )
+            .add()
+            .append(
+                    new KeyedCodec<>("RotationLerpSpeed", Codec.FLOAT, false),
+                    (e, v) -> e.rotationLerpSpeed =
+                            v != null ? v : DEFAULT_LERP_SPEED,
+                    e -> e.rotationLerpSpeed
+            )
+            .add()
             .build();
 
     private boolean custom = true;
@@ -57,6 +73,9 @@ public class CameraEffect extends TriggerEffect {
 
     private Vector3d positionData = new Vector3d();
     private Vector3d rotationData = new Vector3d();
+
+    private Float positionLerpSpeed = DEFAULT_LERP_SPEED;
+    private Float rotationLerpSpeed = DEFAULT_LERP_SPEED;
 
     public void execute(@Nonnull TriggerContext context) {
         Ref<EntityStore> entityRef = context.getEntityRef();
@@ -105,8 +124,11 @@ public class CameraEffect extends TriggerEffect {
                 settings.allowPitchControls = false;
                 settings.sendMouseMotion = false;
 
-                settings.positionLerpSpeed = 0.15F;
-                settings.rotationLerpSpeed = 0.15F;
+                settings.positionLerpSpeed =
+                        positionLerpSpeed != null ? positionLerpSpeed : DEFAULT_LERP_SPEED;
+
+                settings.rotationLerpSpeed =
+                        rotationLerpSpeed != null ? rotationLerpSpeed : DEFAULT_LERP_SPEED;
 
                 playerRef.getPacketHandler().writeNoCache(
                         new SetServerCamera(ClientCameraView.Custom, true, settings)
