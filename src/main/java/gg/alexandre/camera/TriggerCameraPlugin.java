@@ -14,7 +14,17 @@ public class TriggerCameraPlugin extends JavaPlugin {
 
     @Override
     protected void setup() {
-        TriggerVolumesPlugin.get().registerEffectType("Camera", CameraEffect.class, CameraEffect.CODEC);
+        TriggerVolumesPlugin.get().registerEffectType(
+                "Camera",
+                CameraEffect.class,
+                CameraEffect.CODEC
+        );
+
+        TriggerVolumesPlugin.get().registerEffectType(
+                "CameraAlongPath",
+                CameraAlongPathEffect.class,
+                CameraAlongPathEffect.CODEC
+        );
     }
 
 }
