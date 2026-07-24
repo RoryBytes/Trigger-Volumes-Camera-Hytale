@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# The Hytale build tooling writes this file with LF line endings
+src/main/resources/manifest.json text eol=lf
