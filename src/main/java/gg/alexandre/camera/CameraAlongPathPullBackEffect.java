@@ -18,20 +18,31 @@ import com.hypixel.hytale.server.core.util.PositionUtil;
 import org.joml.Vector3d;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CameraAlongPathPullBackEffect extends TriggerEffect {
 
     private static final float DEFAULT_LERP_SPEED = 0.15F;
     private static final double MIN_PATH_LENGTH_SQUARED = 1.0E-8;
-    private static final float DEFAULT_LOOK_AT_HEIGHT = 1.0F;
     private static final double MIN_LOOK_DIRECTION_LENGTH_SQUARED = 1.0E-8;
+    private static final double MIN_DISTANCE_SETTING = 1.0E-4;
+    private static final float MIN_RETURN_DURATION_SECONDS = 0.05F;
+
     private static final float DEFAULT_EYE_HEIGHT = 1.6F;
+    private static final float DEFAULT_TRANSITION_START_DISTANCE = 1.0F;
+    private static final float DEFAULT_ENTRY_ALIGNMENT_DISTANCE = 2.0F;
     private static final float DEFAULT_MAX_PULLBACK_DISTANCE = 16.0F;
     private static final float DEFAULT_END_HEIGHT = 5.0F;
-    private static final float DEFAULT_END_SIDE_OFFSET = 4.0F;
-    private static final float DEFAULT_SIDE_MOVEMENT_START = 0.35F;
+    private static final float DEFAULT_TRACKING_START_PULLBACK = 2.5F;
+    private static final float DEFAULT_TRACKING_BLEND_DISTANCE = 3.0F;
+    private static final float DEFAULT_END_ROLL_DEGREES = 2.5F;
+    private static final float DEFAULT_ROLL_MOVEMENT_START = 0.35F;
     private static final float DEFAULT_DOORWAY_CLEARANCE = 0.5F;
-    private static final float DEFAULT_TRACKING_BLEND_END = 0.25F;
+    private static final float DEFAULT_BACKTRACK_CANCEL_DISTANCE = 1.0F;
+    private static final float DEFAULT_RETURN_DURATION_SECONDS = 0.45F;
+    private static final float DEFAULT_LOOK_AT_HEIGHT = 1.0F;
 
     @Nonnull
     public static final BuilderCodec<CameraAlongPathPullBackEffect> CODEC =
@@ -62,6 +73,20 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
                     )
                     .add()
                     .append(
+                            new KeyedCodec<>("TransitionStartDistance", Codec.FLOAT, false),
+                            (effect, value) -> effect.transitionStartDistance =
+                                    value != null ? value : DEFAULT_TRANSITION_START_DISTANCE,
+                            effect -> effect.transitionStartDistance
+                    )
+                    .add()
+                    .append(
+                            new KeyedCodec<>("EntryAlignmentDistance", Codec.FLOAT, false),
+                            (effect, value) -> effect.entryAlignmentDistance =
+                                    value != null ? value : DEFAULT_ENTRY_ALIGNMENT_DISTANCE,
+                            effect -> effect.entryAlignmentDistance
+                    )
+                    .add()
+                    .append(
                             new KeyedCodec<>("MaxPullbackDistance", Codec.FLOAT, false),
                             (effect, value) -> effect.maxPullbackDistance =
                                     value != null ? value : DEFAULT_MAX_PULLBACK_DISTANCE,
@@ -76,17 +101,31 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
                     )
                     .add()
                     .append(
-                            new KeyedCodec<>("EndSideOffset", Codec.FLOAT, false),
-                            (effect, value) -> effect.endSideOffset =
-                                    value != null ? value : DEFAULT_END_SIDE_OFFSET,
-                            effect -> effect.endSideOffset
+                            new KeyedCodec<>("TrackingStartPullback", Codec.FLOAT, false),
+                            (effect, value) -> effect.trackingStartPullback =
+                                    value != null ? value : DEFAULT_TRACKING_START_PULLBACK,
+                            effect -> effect.trackingStartPullback
                     )
                     .add()
                     .append(
-                            new KeyedCodec<>("SideMovementStart", Codec.FLOAT, false),
-                            (effect, value) -> effect.sideMovementStart =
-                                    value != null ? value : DEFAULT_SIDE_MOVEMENT_START,
-                            effect -> effect.sideMovementStart
+                            new KeyedCodec<>("TrackingBlendDistance", Codec.FLOAT, false),
+                            (effect, value) -> effect.trackingBlendDistance =
+                                    value != null ? value : DEFAULT_TRACKING_BLEND_DISTANCE,
+                            effect -> effect.trackingBlendDistance
+                    )
+                    .add()
+                    .append(
+                            new KeyedCodec<>("EndRollDegrees", Codec.FLOAT, false),
+                            (effect, value) -> effect.endRollDegrees =
+                                    value != null ? value : DEFAULT_END_ROLL_DEGREES,
+                            effect -> effect.endRollDegrees
+                    )
+                    .add()
+                    .append(
+                            new KeyedCodec<>("RollMovementStart", Codec.FLOAT, false),
+                            (effect, value) -> effect.rollMovementStart =
+                                    value != null ? value : DEFAULT_ROLL_MOVEMENT_START,
+                            effect -> effect.rollMovementStart
                     )
                     .add()
                     .append(
@@ -97,10 +136,17 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
                     )
                     .add()
                     .append(
-                            new KeyedCodec<>("TrackingBlendEnd", Codec.FLOAT, false),
-                            (effect, value) -> effect.trackingBlendEnd =
-                                    value != null ? value : DEFAULT_TRACKING_BLEND_END,
-                            effect -> effect.trackingBlendEnd
+                            new KeyedCodec<>("BacktrackCancelDistance", Codec.FLOAT, false),
+                            (effect, value) -> effect.backtrackCancelDistance =
+                                    value != null ? value : DEFAULT_BACKTRACK_CANCEL_DISTANCE,
+                            effect -> effect.backtrackCancelDistance
+                    )
+                    .add()
+                    .append(
+                            new KeyedCodec<>("ReturnDurationSeconds", Codec.FLOAT, false),
+                            (effect, value) -> effect.returnDurationSeconds =
+                                    value != null ? value : DEFAULT_RETURN_DURATION_SECONDS,
+                            effect -> effect.returnDurationSeconds
                     )
                     .add()
                     .append(
@@ -130,16 +176,63 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
     private Vector3d pathEnd = new Vector3d();
 
     private Float eyeHeight = DEFAULT_EYE_HEIGHT;
+    private Float transitionStartDistance = DEFAULT_TRANSITION_START_DISTANCE;
+    private Float entryAlignmentDistance = DEFAULT_ENTRY_ALIGNMENT_DISTANCE;
     private Float maxPullbackDistance = DEFAULT_MAX_PULLBACK_DISTANCE;
     private Float endHeight = DEFAULT_END_HEIGHT;
-    private Float endSideOffset = DEFAULT_END_SIDE_OFFSET;
-    private Float sideMovementStart = DEFAULT_SIDE_MOVEMENT_START;
+    private Float trackingStartPullback = DEFAULT_TRACKING_START_PULLBACK;
+    private Float trackingBlendDistance = DEFAULT_TRACKING_BLEND_DISTANCE;
+    private Float endRollDegrees = DEFAULT_END_ROLL_DEGREES;
+    private Float rollMovementStart = DEFAULT_ROLL_MOVEMENT_START;
     private Float doorwayClearance = DEFAULT_DOORWAY_CLEARANCE;
-    private Float trackingBlendEnd = DEFAULT_TRACKING_BLEND_END;
-
+    private Float backtrackCancelDistance = DEFAULT_BACKTRACK_CANCEL_DISTANCE;
+    private Float returnDurationSeconds = DEFAULT_RETURN_DURATION_SECONDS;
+    private Float lookAtHeight = DEFAULT_LOOK_AT_HEIGHT;
     private Float positionLerpSpeed = DEFAULT_LERP_SPEED;
     private Float rotationLerpSpeed = DEFAULT_LERP_SPEED;
-    private Float lookAtHeight = DEFAULT_LOOK_AT_HEIGHT;
+
+    private final Map<UUID, TransitionState> transitionStates =
+            new ConcurrentHashMap<>();
+
+    private enum TransitionPhase {
+        ACTIVE,
+        RETURNING,
+        CANCELLED
+    }
+
+    private static final class TransitionState {
+
+        private final double startProgress;
+        private final double startDistanceEntered;
+        private final float startYaw;
+        private final float startPitch;
+        private final float pathYaw;
+
+        private double furthestDistanceEntered;
+        private TransitionPhase phase = TransitionPhase.ACTIVE;
+
+        private Vector3d lastCameraPosition;
+        private Direction lastCameraRotation;
+
+        private long returnStartNanos;
+        private Vector3d returnStartPosition;
+        private Direction returnStartRotation;
+        private boolean returnReadyToRelease;
+
+        private TransitionState(
+                double startProgress,
+                double startDistanceEntered,
+                Rotation3f startingRotation,
+                float pathYaw
+        ) {
+            this.startProgress = startProgress;
+            this.startDistanceEntered = startDistanceEntered;
+            this.startYaw = startingRotation.yaw();
+            this.startPitch = startingRotation.pitch();
+            this.pathYaw = pathYaw;
+            this.furthestDistanceEntered = startDistanceEntered;
+        }
+    }
 
     @Override
     public void execute(@Nonnull TriggerContext context) {
@@ -163,13 +256,6 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
         Vector3d playerPosition = transformComponent.getPosition();
         double progress = calculateProgress(playerPosition);
 
-        /*
-         * Build a horizontal forward direction from Path Start toward Path End.
-         *
-         * We intentionally ignore Y here. The path's full 3D coordinates still
-         * determine progress, but the camera pulls backward horizontally rather
-         * than being driven into the floor or ceiling on a sloped path.
-         */
         Vector3d forward = new Vector3d(
                 pathEnd.x - pathStart.x,
                 0.0,
@@ -182,64 +268,71 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
 
         forward.normalize();
 
-        /*
-         * A horizontal right-facing vector perpendicular to the path.
-         *
-         * A positive EndSideOffset moves in this direction.
-         * A negative value moves to the opposite side.
-         */
-        Vector3d right = new Vector3d(
-                -forward.z,
-                0.0,
-                forward.x
+        float eyeHeightValue = valueOrDefault(
+                eyeHeight,
+                DEFAULT_EYE_HEIGHT
         );
 
-        float eyeHeightValue =
-                eyeHeight != null
-                        ? eyeHeight
-                        : DEFAULT_EYE_HEIGHT;
+        float transitionStartDistanceValue = valueOrDefault(
+                transitionStartDistance,
+                DEFAULT_TRANSITION_START_DISTANCE
+        );
 
-        float maxPullbackValue =
-                maxPullbackDistance != null
-                        ? maxPullbackDistance
-                        : DEFAULT_MAX_PULLBACK_DISTANCE;
+        float entryAlignmentDistanceValue = valueOrDefault(
+                entryAlignmentDistance,
+                DEFAULT_ENTRY_ALIGNMENT_DISTANCE
+        );
 
-        float endHeightValue =
-                endHeight != null
-                        ? endHeight
-                        : DEFAULT_END_HEIGHT;
+        float maxPullbackValue = valueOrDefault(
+                maxPullbackDistance,
+                DEFAULT_MAX_PULLBACK_DISTANCE
+        );
 
-        float endSideOffsetValue =
-                endSideOffset != null
-                        ? endSideOffset
-                        : DEFAULT_END_SIDE_OFFSET;
+        float endHeightValue = valueOrDefault(
+                endHeight,
+                DEFAULT_END_HEIGHT
+        );
 
-        float sideMovementStartValue =
-                sideMovementStart != null
-                        ? sideMovementStart
-                        : DEFAULT_SIDE_MOVEMENT_START;
+        float trackingStartPullbackValue = valueOrDefault(
+                trackingStartPullback,
+                DEFAULT_TRACKING_START_PULLBACK
+        );
 
-        float doorwayClearanceValue =
-                doorwayClearance != null
-                        ? doorwayClearance
-                        : DEFAULT_DOORWAY_CLEARANCE;
+        float trackingBlendDistanceValue = valueOrDefault(
+                trackingBlendDistance,
+                DEFAULT_TRACKING_BLEND_DISTANCE
+        );
 
-        float trackingBlendEndValue =
-                trackingBlendEnd != null
-                        ? trackingBlendEnd
-                        : DEFAULT_TRACKING_BLEND_END;
+        float endRollDegreesValue = valueOrDefault(
+                endRollDegrees,
+                DEFAULT_END_ROLL_DEGREES
+        );
 
-        float lookAtHeightValue =
-                lookAtHeight != null
-                        ? lookAtHeight
-                        : DEFAULT_LOOK_AT_HEIGHT;
+        float rollMovementStartValue = valueOrDefault(
+                rollMovementStart,
+                DEFAULT_ROLL_MOVEMENT_START
+        );
 
-        /*
-         * Measure how far the player has physically entered the hall.
-         *
-         * At Path Start this is approximately 0.
-         * It increases while moving toward Path End.
-         */
+        float doorwayClearanceValue = valueOrDefault(
+                doorwayClearance,
+                DEFAULT_DOORWAY_CLEARANCE
+        );
+
+        float backtrackCancelDistanceValue = valueOrDefault(
+                backtrackCancelDistance,
+                DEFAULT_BACKTRACK_CANCEL_DISTANCE
+        );
+
+        float returnDurationSecondsValue = valueOrDefault(
+                returnDurationSeconds,
+                DEFAULT_RETURN_DURATION_SECONDS
+        );
+
+        float lookAtHeightValue = valueOrDefault(
+                lookAtHeight,
+                DEFAULT_LOOK_AT_HEIGHT
+        );
+
         double distanceEntered =
                 new Vector3d(playerPosition)
                         .sub(pathStart)
@@ -247,106 +340,199 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
 
         distanceEntered = Math.max(0.0, distanceEntered);
 
-        /*
-         * Desired pullback grows smoothly from zero to the configured maximum.
-         */
-        double pullbackProgress = smoothstep(progress);
+        UUID playerUuid = playerRef.getUuid();
+        TransitionState transitionState = transitionStates.get(playerUuid);
+
+        if (transitionState == null) {
+            double requiredDistance = Math.max(
+                    0.0,
+                    transitionStartDistanceValue
+            );
+
+            if (distanceEntered < requiredDistance) {
+                return;
+            }
+
+            Rotation3f startingRotation = playerRef.getHeadRotation();
+
+            float pathYaw =
+                    (float) (
+                            Math.atan2(
+                                    forward.x,
+                                    forward.z
+                            )
+                                    + Math.PI
+                    );
+
+            transitionState =
+                    new TransitionState(
+                            progress,
+                            distanceEntered,
+                            startingRotation,
+                            pathYaw
+                    );
+
+            transitionStates.put(
+                    playerUuid,
+                    transitionState
+            );
+        }
+
+        if (transitionState.phase == TransitionPhase.CANCELLED) {
+            return;
+        }
+
+        if (transitionState.phase == TransitionPhase.RETURNING) {
+            executeReturn(
+                    playerRef,
+                    playerPosition,
+                    transitionState,
+                    eyeHeightValue,
+                    returnDurationSecondsValue
+            );
+            return;
+        }
+
+        transitionState.furthestDistanceEntered =
+                Math.max(
+                        transitionState.furthestDistanceEntered,
+                        distanceEntered
+                );
+
+        double backtrackedDistance =
+                transitionState.furthestDistanceEntered
+                        - distanceEntered;
+
+        if (transitionState.lastCameraPosition != null
+                && backtrackedDistance
+                >= Math.max(0.0, backtrackCancelDistanceValue)) {
+            beginReturn(transitionState);
+
+            executeReturn(
+                    playerRef,
+                    playerPosition,
+                    transitionState,
+                    eyeHeightValue,
+                    returnDurationSecondsValue
+            );
+            return;
+        }
+
+        double remainingPathProgress =
+                1.0 - transitionState.startProgress;
+
+        double cinematicProgress;
+
+        if (remainingPathProgress < MIN_PATH_LENGTH_SQUARED) {
+            cinematicProgress = 1.0;
+        } else {
+            cinematicProgress =
+                    Math.clamp(
+                            (progress - transitionState.startProgress)
+                                    / remainingPathProgress,
+                            0.0,
+                            1.0
+                    );
+        }
+
+        double pullbackProgress =
+                smoothstep(cinematicProgress);
 
         double desiredPullback =
                 Math.max(0.0, maxPullbackValue)
                         * pullbackProgress;
 
-        /*
-         * Prevent the camera from moving behind the entrance wall.
-         *
-         * The camera cannot pull back farther than the available distance
-         * between the player and Path Start, minus Doorway Clearance.
-         */
         double availablePullback =
                 Math.max(
                         0.0,
-                        distanceEntered - Math.max(0.0, doorwayClearanceValue)
+                        distanceEntered
+                                - Math.max(0.0, doorwayClearanceValue)
                 );
 
         double safePullback =
-                Math.min(desiredPullback, availablePullback);
+                Math.min(
+                        desiredPullback,
+                        availablePullback
+                );
 
-        /*
-         * Height starts at zero additional height because the base position
-         * is already the player's eye position.
-         */
         double additionalHeight =
-                endHeightValue * smoothstep(progress);
+                endHeightValue
+                        * smoothstep(cinematicProgress);
 
-        /*
-         * Side motion begins later than pullback and height.
-         *
-         * Example:
-         * SideMovementStart = 0.35
-         * means no sideways movement during the first 35% of the path.
-         */
-        double clampedSideStart =
-                Math.clamp(sideMovementStartValue, 0.0, 0.9999);
+        double clampedRollStart =
+                Math.clamp(
+                        rollMovementStartValue,
+                        0.0,
+                        0.9999
+                );
 
-        double sideProgress =
-                progress <= clampedSideStart
+        double rollProgress =
+                cinematicProgress <= clampedRollStart
                         ? 0.0
-                        : (progress - clampedSideStart)
-                        / (1.0 - clampedSideStart);
+                        : (cinematicProgress - clampedRollStart)
+                        / (1.0 - clampedRollStart);
 
-        sideProgress = smoothstep(sideProgress);
+        rollProgress = smoothstep(rollProgress);
 
-        double currentSideOffset =
-                endSideOffsetValue * sideProgress;
+        float endingRoll =
+                (float) Math.toRadians(
+                        endRollDegreesValue
+                );
 
-        /*
-         * Begin at the player's eye position.
-         */
+        float currentRoll =
+                lerpAngle(
+                        0.0F,
+                        endingRoll,
+                        rollProgress
+                );
+
         Vector3d eyePosition =
                 new Vector3d(playerPosition)
                         .add(0.0, eyeHeightValue, 0.0);
 
-        /*
-         * Move:
-         * - backward along the hall
-         * - upward
-         * - sideways later in the path
-         */
         Vector3d cameraWorldPosition =
                 new Vector3d(eyePosition)
                         .add(
                                 new Vector3d(forward)
                                         .mul(-safePullback)
                         )
-                        .add(0.0, additionalHeight, 0.0)
-                        .add(
-                                new Vector3d(right)
-                                        .mul(currentSideOffset)
-                        );
+                        .add(0.0, additionalHeight, 0.0);
 
-        /*
-         * Read the player's current look direction.
-         *
-         * Use lookOrientation when Hytale has sent one. Fall back to the
-         * entity's rotation when it is unavailable.
-         */
-        Direction playerLook =
-                transformComponent.getSentTransform().lookOrientation;
+        double distanceSinceActivation =
+                Math.max(
+                        0.0,
+                        distanceEntered
+                                - transitionState.startDistanceEntered
+                );
 
-        if (playerLook == null) {
-            Rotation3f playerRotation =
-                    transformComponent.getRotation();
+        double entryAlignment =
+                smoothstep(
+                        Math.clamp(
+                                distanceSinceActivation
+                                        / Math.max(
+                                        MIN_DISTANCE_SETTING,
+                                        entryAlignmentDistanceValue
+                                ),
+                                0.0,
+                                1.0
+                        )
+                );
 
-            playerLook = new Direction(
-                    playerRotation.yaw(),
-                    playerRotation.pitch(),
-                    playerRotation.roll()
-            );
-        }
+        Direction alignedEntryView =
+                new Direction(
+                        lerpAngle(
+                                transitionState.startYaw,
+                                transitionState.pathYaw,
+                                entryAlignment
+                        ),
+                        lerpAngle(
+                                transitionState.startPitch,
+                                0.0F,
+                                entryAlignment
+                        ),
+                        0.0F
+                );
 
-        /*
-         * Calculate a rotation that aims from the camera toward the player.
-         */
         Vector3d lookTarget =
                 new Vector3d(playerPosition)
                         .add(0.0, lookAtHeightValue, 0.0);
@@ -359,7 +545,8 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
 
         if (lookDirection.lengthSquared()
                 < MIN_LOOK_DIRECTION_LENGTH_SQUARED) {
-            trackingRotation = new Direction(playerLook);
+            trackingRotation =
+                    new Direction(alignedEntryView);
         } else {
             lookDirection.normalize();
 
@@ -385,22 +572,20 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
                     );
         }
 
-        /*
-         * At the doorway, use the player's view.
-         *
-         * By TrackingBlendEnd, fully rotate toward tracking the player.
-         */
-        double safeTrackingBlendEnd =
-                Math.clamp(
-                        trackingBlendEndValue,
-                        0.0001,
-                        1.0
-                );
-
         double trackingBlend =
                 smoothstep(
                         Math.clamp(
-                                progress / safeTrackingBlendEnd,
+                                (
+                                        safePullback
+                                                - Math.max(
+                                                0.0,
+                                                trackingStartPullbackValue
+                                        )
+                                )
+                                        / Math.max(
+                                        MIN_DISTANCE_SETTING,
+                                        trackingBlendDistanceValue
+                                ),
                                 0.0,
                                 1.0
                         )
@@ -409,48 +594,185 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
         Direction cameraRotation =
                 new Direction(
                         lerpAngle(
-                                playerLook.yaw,
+                                alignedEntryView.yaw,
                                 trackingRotation.yaw,
                                 trackingBlend
                         ),
                         lerpAngle(
-                                playerLook.pitch,
+                                alignedEntryView.pitch,
                                 trackingRotation.pitch,
                                 trackingBlend
                         ),
+                        currentRoll
+                );
+
+        sendCustomCamera(
+                playerRef,
+                cameraWorldPosition,
+                cameraRotation,
+                safePullback < 1.0,
+                false,
+                false,
+                valueOrDefault(
+                        positionLerpSpeed,
+                        DEFAULT_LERP_SPEED
+                ),
+                valueOrDefault(
+                        rotationLerpSpeed,
+                        DEFAULT_LERP_SPEED
+                )
+        );
+
+        transitionState.lastCameraPosition =
+                new Vector3d(cameraWorldPosition);
+
+        transitionState.lastCameraRotation =
+                new Direction(cameraRotation);
+    }
+
+    private void beginReturn(
+            @Nonnull TransitionState transitionState
+    ) {
+        transitionState.phase = TransitionPhase.RETURNING;
+        transitionState.returnStartNanos = System.nanoTime();
+        transitionState.returnStartPosition =
+                new Vector3d(
+                        transitionState.lastCameraPosition
+                );
+        transitionState.returnStartRotation =
+                new Direction(
+                        transitionState.lastCameraRotation
+                );
+        transitionState.returnReadyToRelease = false;
+    }
+
+    private void executeReturn(
+            @Nonnull PlayerRef playerRef,
+            @Nonnull Vector3d playerPosition,
+            @Nonnull TransitionState transitionState,
+            float eyeHeightValue,
+            float returnDurationSecondsValue
+    ) {
+        if (transitionState.returnReadyToRelease) {
+            restoreFirstPerson(playerRef);
+            transitionState.phase = TransitionPhase.CANCELLED;
+            return;
+        }
+
+        if (transitionState.returnStartPosition == null
+                || transitionState.returnStartRotation == null) {
+            restoreFirstPerson(playerRef);
+            transitionState.phase = TransitionPhase.CANCELLED;
+            return;
+        }
+
+        double durationSeconds =
+                Math.max(
+                        MIN_RETURN_DURATION_SECONDS,
+                        returnDurationSecondsValue
+                );
+
+        double elapsedSeconds =
+                (
+                        System.nanoTime()
+                                - transitionState.returnStartNanos
+                )
+                        / 1_000_000_000.0;
+
+        double returnProgress =
+                Math.clamp(
+                        elapsedSeconds / durationSeconds,
+                        0.0,
+                        1.0
+                );
+
+        double easedReturnProgress =
+                smoothstep(returnProgress);
+
+        Vector3d eyePosition =
+                new Vector3d(playerPosition)
+                        .add(0.0, eyeHeightValue, 0.0);
+
+        Rotation3f liveHeadRotation =
+                playerRef.getHeadRotation();
+
+        Vector3d returningPosition =
+                new Vector3d(
+                        transitionState.returnStartPosition
+                )
+                        .lerp(
+                                eyePosition,
+                                easedReturnProgress
+                        );
+
+        Direction returningRotation =
+                new Direction(
                         lerpAngle(
-                                playerLook.roll,
-                                trackingRotation.roll,
-                                trackingBlend
+                                transitionState.returnStartRotation.yaw,
+                                liveHeadRotation.yaw(),
+                                easedReturnProgress
+                        ),
+                        lerpAngle(
+                                transitionState.returnStartRotation.pitch,
+                                liveHeadRotation.pitch(),
+                                easedReturnProgress
+                        ),
+                        lerpAngle(
+                                transitionState.returnStartRotation.roll,
+                                liveHeadRotation.roll(),
+                                easedReturnProgress
                         )
                 );
 
+        boolean nearPlayerEyes =
+                returningPosition.distanceSquared(
+                        eyePosition
+                )
+                        < 1.0;
+
+        sendCustomCamera(
+                playerRef,
+                returningPosition,
+                returningRotation,
+                nearPlayerEyes,
+                true,
+                true,
+                1.0F,
+                1.0F
+        );
+
+        if (returnProgress >= 1.0) {
+            transitionState.returnReadyToRelease = true;
+        }
+    }
+
+    private void sendCustomCamera(
+            @Nonnull PlayerRef playerRef,
+            @Nonnull Vector3d cameraWorldPosition,
+            @Nonnull Direction cameraRotation,
+            boolean isFirstPerson,
+            boolean allowPitchControls,
+            boolean sendMouseMotion,
+            float positionSpeed,
+            float rotationSpeed
+    ) {
         Position cameraPosition =
-                PositionUtil.toPositionPacket(cameraWorldPosition);
+                PositionUtil.toPositionPacket(
+                        cameraWorldPosition
+                );
 
         ServerCameraSettings settings =
                 new ServerCameraSettings();
 
         settings.position = cameraPosition;
         settings.rotation = cameraRotation;
-
         settings.positionType = PositionType.Custom;
         settings.rotationType = RotationType.Custom;
-
-        settings.isFirstPerson =
-                safePullback < 1.0;
-        settings.allowPitchControls = false;
-        settings.sendMouseMotion = false;
-
-        settings.positionLerpSpeed =
-                positionLerpSpeed != null
-                        ? positionLerpSpeed
-                        : DEFAULT_LERP_SPEED;
-
-        settings.rotationLerpSpeed =
-                rotationLerpSpeed != null
-                        ? rotationLerpSpeed
-                        : DEFAULT_LERP_SPEED;
+        settings.isFirstPerson = isFirstPerson;
+        settings.allowPitchControls = allowPitchControls;
+        settings.sendMouseMotion = sendMouseMotion;
+        settings.positionLerpSpeed = positionSpeed;
+        settings.rotationLerpSpeed = rotationSpeed;
 
         playerRef.getPacketHandler().writeNoCache(
                 new SetServerCamera(
@@ -459,6 +781,25 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
                         settings
                 )
         );
+    }
+
+    private void restoreFirstPerson(
+            @Nonnull PlayerRef playerRef
+    ) {
+        playerRef.getPacketHandler().writeNoCache(
+                new SetServerCamera(
+                        ClientCameraView.FirstPerson,
+                        false,
+                        null
+                )
+        );
+    }
+
+    @Override
+    public void onEntityExit(
+            @Nonnull UUID entityUuid
+    ) {
+        transitionStates.remove(entityUuid);
     }
 
     private double calculateProgress(
@@ -483,12 +824,20 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
                 playerFromStart.dot(pathDirection)
                         / pathLengthSquared;
 
-        return Math.clamp(progress, 0.0, 1.0);
+        return Math.clamp(
+                progress,
+                0.0,
+                1.0
+        );
     }
 
     private static double smoothstep(double value) {
         double clamped =
-                Math.clamp(value, 0.0, 1.0);
+                Math.clamp(
+                        value,
+                        0.0,
+                        1.0
+                );
 
         return clamped
                 * clamped
@@ -500,10 +849,6 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
             float end,
             double amount
     ) {
-        /*
-         * Find the shortest angular distance, including across the
-         * -180/180-degree boundary expressed here in radians.
-         */
         double difference =
                 Math.atan2(
                         Math.sin(end - start),
@@ -513,5 +858,14 @@ public class CameraAlongPathPullBackEffect extends TriggerEffect {
         return (float) (
                 start + difference * amount
         );
+    }
+
+    private static float valueOrDefault(
+            Float value,
+            float defaultValue
+    ) {
+        return value != null
+                ? value
+                : defaultValue;
     }
 }
