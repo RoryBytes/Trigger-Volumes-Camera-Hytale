@@ -92,3 +92,15 @@ customUI.triggerVolumeEffectEditor.field.CameraAlongPathPullBack.PositionLerpSpe
 customUI.triggerVolumeEffectEditor.field.CameraAlongPathPullBack.PositionLerpSpeed.tooltip = Controls how quickly the camera moves toward its calculated position. Default: 0.15.
 customUI.triggerVolumeEffectEditor.field.CameraAlongPathPullBack.RotationLerpSpeed = Rotation Transition Speed
 customUI.triggerVolumeEffectEditor.field.CameraAlongPathPullBack.RotationLerpSpeed.tooltip = Controls how quickly the camera rotates toward its calculated orientation. Default: 0.15.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.PullbackDistance = Pullback Distance
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.PullbackDistance.tooltip = How far the camera moves behind the player by the end of the trigger volume. Default: 16.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.VerticalMovement = Vertical Movement
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.VerticalMovement.tooltip = How far the camera moves vertically along the path. Positive values move upward; negative values move downward. Default: 5.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.HorizontalMovement = Horizontal Movement
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.HorizontalMovement.tooltip = How far the camera moves sideways relative to the path direction. Positive and negative values move toward opposite sides. Use 0 to remain centered. Default: 0.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.CameraRollDegrees = Camera Roll (Degrees; 0 = Off)
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.CameraRollDegrees.tooltip = Final camera tilt in degrees. Use 0 for no roll or a negative value to tilt in the opposite direction. Default: 2.5.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.TransitionSpeed = Transition Speed
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.TransitionSpeed.tooltip = Controls how quickly the camera responds to its changing target. Lower values are slower and smoother. Default: 0.15.
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.CancelOnBacktracking = Cancel on Backtracking
+customUI.triggerVolumeEffectEditor.field.CameraAlongPathSimplified.CancelOnBacktracking.tooltip = If enabled, walking back toward the entrance cancels the cinematic camera until the player exits and re-enters the volume.

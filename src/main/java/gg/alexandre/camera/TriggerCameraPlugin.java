@@ -40,6 +40,11 @@ public class TriggerCameraPlugin extends JavaPlugin {
                 CameraAlongPathPullBackEffect.class,
                 CameraAlongPathPullBackEffect.CODEC
         );
+        TriggerVolumesPlugin.get().registerEffectType(
+                "CameraAlongPathSimplified",
+                CameraAlongPathSimplifiedEffect.class,
+                CameraAlongPathSimplifiedEffect.CODEC
+        );
     }
 
 }
