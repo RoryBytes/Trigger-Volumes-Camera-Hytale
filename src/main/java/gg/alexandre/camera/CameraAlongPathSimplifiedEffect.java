@@ -137,6 +137,8 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
 
     private static final double BACKTRACK_CANCEL_THRESHOLD = 0.05;
 
+    private static final double CAMERA_EYE_HEIGHT = 1.6;
+
     private final Map<UUID, PathState> pathStates =
             new ConcurrentHashMap<>();
 
@@ -145,6 +147,7 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
         private final boolean usesXAxis;
         private final boolean enteredFromMinimumEnd;
         private final boolean enteredThroughEnd;
+        private final Vector3d entryEyePosition;
 
         private int lastReportedBucket = -1;
         private double farthestProgress = 0.0;
@@ -153,13 +156,16 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
         private PathState(
                 boolean usesXAxis,
                 boolean enteredFromMinimumEnd,
-                boolean enteredThroughEnd
+                boolean enteredThroughEnd,
+                @Nonnull Vector3d entryEyePosition
         ) {
             this.usesXAxis = usesXAxis;
             this.enteredFromMinimumEnd =
                     enteredFromMinimumEnd;
             this.enteredThroughEnd =
                     enteredThroughEnd;
+            this.entryEyePosition =
+                    new Vector3d(entryEyePosition);
         }
     }
 
@@ -397,11 +403,20 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                                     distanceToMinimumEnd
                                             <= distanceToMaximumEnd;
 
+                            Vector3d entryEyePosition =
+                                    new Vector3d(playerPosition)
+                                            .add(
+                                                    0.0,
+                                                    CAMERA_EYE_HEIGHT,
+                                                    0.0
+                                            );
+
                             PathState newState =
                                     new PathState(
                                             usesXAxis,
                                             enteredFromMinimumEnd,
-                                            enteredThroughEnd
+                                            enteredThroughEnd,
+                                            entryEyePosition
                                     );
 
                             /*
@@ -600,6 +615,22 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                         + (rightZ * horizontalNow);
 
         /*
+         * Build the camera position from the eye position captured
+         * when this visit began.
+         *
+         * This is the key difference from the rejected chase-camera
+         * prototype: the camera path is anchored to the world and is
+         * not rebuilt from the player's current position every tick.
+         */
+        Vector3d cameraWorldPosition =
+                new Vector3d(pathState.entryEyePosition)
+                        .add(
+                                cameraOffsetX,
+                                cameraOffsetY,
+                                cameraOffsetZ
+                        );
+
+        /*
          * Convert progress into ten reporting sections:
          *
          * 0  means 0-9%
@@ -644,15 +675,19 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                     "[CameraAlongPathSimplified] "
                             + "volume=%s axis=%s entry=END "
                             + "forward=%s progress=%.0f%% "
-                            + "offset=(%.2f, %.2f, %.2f) "
+                            + "camera=(%.2f, %.2f, %.2f) "
+                            + "player=(%.2f, %.2f, %.2f) "
                             + "roll=%.2f%n",
                     volume.getId(),
                     axisName,
                     forwardDirection,
                     progress * 100.0,
-                    cameraOffsetX,
-                    cameraOffsetY,
-                    cameraOffsetZ,
+                    cameraWorldPosition.x,
+                    cameraWorldPosition.y,
+                    cameraWorldPosition.z,
+                    playerPosition.x,
+                    playerPosition.y,
+                    playerPosition.z,
                     rollNow
             );
         }
