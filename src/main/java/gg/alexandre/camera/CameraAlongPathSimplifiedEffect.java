@@ -148,6 +148,7 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
         private final boolean enteredFromMinimumEnd;
         private final boolean enteredThroughEnd;
         private final Vector3d entryEyePosition;
+        private final double entryPathCoordinate;
 
         private int lastReportedBucket = -1;
         private double farthestProgress = 0.0;
@@ -157,7 +158,8 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                 boolean usesXAxis,
                 boolean enteredFromMinimumEnd,
                 boolean enteredThroughEnd,
-                @Nonnull Vector3d entryEyePosition
+                @Nonnull Vector3d entryEyePosition,
+                double entryPathCoordinate
         ) {
             this.usesXAxis = usesXAxis;
             this.enteredFromMinimumEnd =
@@ -166,6 +168,8 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                     enteredThroughEnd;
             this.entryEyePosition =
                     new Vector3d(entryEyePosition);
+            this.entryPathCoordinate =
+                    entryPathCoordinate;
         }
     }
 
@@ -416,7 +420,8 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                                             usesXAxis,
                                             enteredFromMinimumEnd,
                                             enteredThroughEnd,
-                                            entryEyePosition
+                                            entryEyePosition,
+                                            playerCoordinate
                                     );
 
                             /*
@@ -575,59 +580,92 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                 forwardX;
 
         /*
-         * Gradually increase each configured movement as progress
-         * changes from 0 to 1.
-         *
-         * At 0% progress:
-         * pullbackNow = 0
-         *
-         * At 50% progress with Pullback Distance 16:
-         * pullbackNow = 8
-         *
-         * At 100%:
-         * pullbackNow = 16
+         * Measure how much of the route remains from the exact point
+         * where this player entered to the opposite end of the volume.
          */
-        double pullbackNow =
-                pullbackDistance * progress;
+        double remainingPathLength =
+                pathState.enteredFromMinimumEnd
+                        ? maximumCoordinate
+                        - pathState.entryPathCoordinate
+                        : pathState.entryPathCoordinate
+                        - minimumCoordinate;
 
-        double verticalNow =
-                verticalMovement * progress;
-
-        double horizontalNow =
-                horizontalMovement * progress;
-
-        double rollNow =
-                cameraRollDegrees * progress;
+        if (remainingPathLength < MIN_PATH_LENGTH) {
+            return;
+        }
 
         /*
-         * Pullback moves opposite the forward direction.
-         * Horizontal movement uses the 90-degree sideways direction.
+         * Measure only movement along the hallway axis. Sideways player
+         * movement does not move the camera route.
          */
-        double cameraOffsetX =
-                (-forwardX * pullbackNow)
+        double distanceTravelledFromEntry =
+                pathState.enteredFromMinimumEnd
+                        ? playerCoordinate
+                        - pathState.entryPathCoordinate
+                        : pathState.entryPathCoordinate
+                        - playerCoordinate;
+
+        /*
+         * cameraProgress starts at 0 at the captured entrance point and
+         * reaches 1 at the opposite end.
+         */
+        double cameraProgress =
+                Math.clamp(
+                        distanceTravelledFromEntry
+                                / remainingPathLength,
+                        0.0,
+                        1.0
+                );
+
+        /*
+         * Move the camera base forward along the volume's fixed route,
+         * then apply the configured pullback, vertical movement,
+         * sideways movement and roll.
+         */
+        double pathTravelNow =
+                remainingPathLength
+                        * cameraProgress;
+
+        double pullbackNow =
+                pullbackDistance
+                        * cameraProgress;
+
+        double verticalNow =
+                verticalMovement
+                        * cameraProgress;
+
+        double horizontalNow =
+                horizontalMovement
+                        * cameraProgress;
+
+        double rollNow =
+                cameraRollDegrees
+                        * cameraProgress;
+
+        double cameraMovementX =
+                (forwardX * pathTravelNow)
+                        - (forwardX * pullbackNow)
                         + (rightX * horizontalNow);
 
-        double cameraOffsetY =
+        double cameraMovementY =
                 verticalNow;
 
-        double cameraOffsetZ =
-                (-forwardZ * pullbackNow)
+        double cameraMovementZ =
+                (forwardZ * pathTravelNow)
+                        - (forwardZ * pullbackNow)
                         + (rightZ * horizontalNow);
 
         /*
-         * Build the camera position from the eye position captured
-         * when this visit began.
-         *
-         * This is the key difference from the rejected chase-camera
-         * prototype: the camera path is anchored to the world and is
-         * not rebuilt from the player's current position every tick.
+         * The route begins at the player's captured entrance eye
+         * position, then advances along one fixed world-space line.
+         * Current sideways and vertical player movement are not added.
          */
         Vector3d cameraWorldPosition =
                 new Vector3d(pathState.entryEyePosition)
                         .add(
-                                cameraOffsetX,
-                                cameraOffsetY,
-                                cameraOffsetZ
+                                cameraMovementX,
+                                cameraMovementY,
+                                cameraMovementZ
                         );
 
         /*
@@ -674,7 +712,8 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
             System.out.printf(
                     "[CameraAlongPathSimplified] "
                             + "volume=%s axis=%s entry=END "
-                            + "forward=%s progress=%.0f%% "
+                            + "forward=%s volumeProgress=%.0f%% "
+                            + "cameraProgress=%.0f%% "
                             + "camera=(%.2f, %.2f, %.2f) "
                             + "player=(%.2f, %.2f, %.2f) "
                             + "roll=%.2f%n",
@@ -682,6 +721,7 @@ public class CameraAlongPathSimplifiedEffect extends TriggerEffect {
                     axisName,
                     forwardDirection,
                     progress * 100.0,
+                    cameraProgress * 100.0,
                     cameraWorldPosition.x,
                     cameraWorldPosition.y,
                     cameraWorldPosition.z,
